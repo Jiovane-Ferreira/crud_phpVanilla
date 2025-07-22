@@ -1,4 +1,4 @@
-<?php include_once('config.php'); ?>
+<?php require_once __DIR__  .'/config.php'; ?>
 
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -58,7 +58,7 @@
                 } catch(PDOException $e) {
                     echo "<tr><td colspan='6' class='text-danger'>Erro ao carregar usuários: " . $e->getMessage() . "</td></tr>";
                 }
-                
+
             ?>
             </tbody>
         </table>
