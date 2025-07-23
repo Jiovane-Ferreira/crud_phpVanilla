@@ -1,12 +1,17 @@
 <?php 
+// inserção da configuração com o banco de dados.
 require_once 'config.php';
 
-// Configuração da paginação
+// Configuração da paginação, assumindo que se não houver, então o resultado é 1.
+// retorna sempre 5 registros por página e define o offset
+
 $pagina = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
 $por_pagina = 5;
 $offset = ($pagina - 1) * $por_pagina;
 
-// Busca os usuários com paginação
+
+// Busca os usuários com paginação e faz tratamento de erros utilizando try-catch
+// faz o tratamento para evitar SQL injections utilizando o "bindParam".
 try {
     $sql = "SELECT * FROM usuarios ORDER BY criado_em DESC LIMIT :offset, :por_pagina";
     $stmt = $pdo->prepare($sql);
@@ -15,7 +20,7 @@ try {
     $stmt->execute();
     $usuarios = $stmt->fetchAll();
     
-    // Conta o total de registros
+    // Conta o total de registros e faz o arredondamento para ser exibido
     $total_sql = "SELECT COUNT(*) as total FROM usuarios";
     $total_stmt = $pdo->query($total_sql);
     $total = $total_stmt->fetch()['total'];
