@@ -12,23 +12,54 @@ $offset = ($pagina - 1) * $por_pagina;
 
 // Busca os usuários com paginação e faz tratamento de erros utilizando try-catch
 // faz o tratamento para evitar SQL injections utilizando o "bindParam".
+
 try {
-    $sql = "SELECT * FROM usuarios ORDER BY criado_em DESC LIMIT :offset, :por_pagina";
+    $email_busca = isset($_GET['email_busca']) ? trim($_GET['email_busca']) : '';
+    
+    // Base da consulta SQL
+    $sql = "SELECT * FROM usuarios";
+    $params = [];
+    
+    // Adiciona condição de busca se houver
+    if (!empty($email_busca)) {
+        $sql .= " WHERE email LIKE :email";
+        $params[':email'] = '%' . $email_busca . '%';
+    }
+    
+    // Ordenação e paginação
+    $sql .= " ORDER BY criado_em DESC LIMIT :offset, :por_pagina";
+    
+    // Prepara e executa a consulta
     $stmt = $pdo->prepare($sql);
+    
+    // Bind dos parâmetros
+    if (!empty($email_busca)) {
+        $stmt->bindParam(':email', $params[':email']);
+    }
     $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
     $stmt->bindParam(':por_pagina', $por_pagina, PDO::PARAM_INT);
+    
     $stmt->execute();
     $usuarios = $stmt->fetchAll();
     
-    // Conta o total de registros e faz o arredondamento para ser exibido
-    $total_sql = "SELECT COUNT(*) as total FROM usuarios";
-    $total_stmt = $pdo->query($total_sql);
-    $total = $total_stmt->fetch()['total'];
+    // Contagem total (incluindo busca)
+    $count_sql = "SELECT COUNT(*) as total FROM usuarios";
+    if (!empty($email_busca)) {
+        $count_sql .= " WHERE email LIKE :email";
+    }
+    
+    $count_stmt = $pdo->prepare($count_sql);
+    if (!empty($email_busca)) {
+        $count_stmt->bindParam(':email', $params[':email']);
+    }
+    $count_stmt->execute();
+    $total = $count_stmt->fetch()['total'];
     $total_paginas = ceil($total / $por_pagina);
     
 } catch(PDOException $e) {
     die("Erro ao carregar usuários: " . $e->getMessage());
 }
+
 ?>
 
 <!DOCTYPE html>
@@ -52,7 +83,34 @@ try {
         <?php endif; ?>
         
         <a href="create.php" class="btn btn-primary mb-3">Novo Usuário</a>
-        
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <form method="GET" action="index.php" class="form-inline">
+                    <div class="input-group">
+                        <input type="text" name="email_busca" class="form-control" 
+                            placeholder="Buscar por e-mail" value="<?= isset($_GET['email_busca']) ? htmlspecialchars($_GET['email_busca']) : '' ?>">
+                        <div class="input-group-append">
+                            <button type="submit" class="btn btn-primary">Buscar</button>
+
+                            <?php if(isset($_GET['email_busca'])): ?>
+                                <a href="index.php" class="btn btn-secondary">Limpar</a>
+                            <?php endif; ?>
+
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- feedback da busca -->
+        <?php if (!empty($email_busca)): ?>
+            <div class="alert alert-info mt-3">
+                Mostrando resultados filtrados por e-mail: <strong><?= htmlspecialchars($email_busca) ?></strong>
+                <a href="index.php" class="float-right">Mostrar todos</a>
+            </div>
+        <?php endif; ?>
+            
         <table class="table table-striped">
             <thead>
                 <tr>
@@ -87,8 +145,9 @@ try {
                 <ul class="pagination">
                     <?php for ($i = 1; $i <= $total_paginas; $i++): ?>
                         <li class="page-item <?= $i == $pagina ? 'active' : '' ?>">
-                            <a class="page-link" href="index.php?pagina=<?= $i ?>"><?= $i ?></a>
-                        </li>
+                            <a class="page-link" href="index.php?pagina=<?= $i ?>&email_busca=<?= isset($_GET['email_busca']) ? urlencode($_GET['email_busca']) : '' ?>">
+                                 <?= $i ?>
+                            </a>
                     <?php endfor; ?>
                 </ul>
             </nav>
